@@ -4,12 +4,6 @@ package Kolab::LDAP::Backend::ad;
 ##  Copyright (c) 2003  Code Fusion cc
 ##
 ##    Writen by Stuart Bingë  <s.binge@codefusion.co.za>
-##    Portions based on work by the following people:
-##
-##      (c) 2003  Tassilo Erlewein  <tassilo.erlewein@erfrakon.de>
-##      (c) 2003  Martin Konold     <martin.konold@erfrakon.de>
-##      (c) 2003  Achim Frank       <achim.frank@erfrakon.de>
-##
 ##
 ##  This  program is free  software; you can redistribute  it and/or
 ##  modify it  under the terms of the GNU  General Public License as
@@ -41,8 +35,8 @@ our @ISA = qw(Exporter);
 
 our %EXPORT_TAGS = (
     'all' => [ qw(
-        &startup
-        &run
+    &startup
+    &run
     ) ]
 );
 
@@ -52,7 +46,7 @@ our @EXPORT = qw(
     
 );
 
-our $VERSION = '0.01';
+our $VERSION = '0.9';
 
 sub startup { 1; }
 
@@ -72,7 +66,7 @@ sub changeCallback
 {
     Kolab::log('AD', 'Change notification received', KOLAB_DEBUG);
 
-    ###   $_[0]   isa         Net::LDAP::Message
+    ###   $_[0]   isa     Net::LDAP::Message
     ###   $_[1]   shouldbea   Net::LDAP::Entry
 
     my $mesg = shift || 0;
@@ -81,38 +75,38 @@ sub changeCallback
     my $issearch = $mesg->isa("Net::LDAP::Search");
 
     if (!$issearch) {
-        Kolab::log('AD', 'mesg is not a search object, testing code...', KOLAB_DEBUG);
-        if ($mesg->code == 88) {
-            Kolab::log('AD', 'changeCallback() -> Exit code received, returning', KOLAB_DEBUG);
-            return;
-        } elsif ($mesg->code) {
-            Kolab::log('AD', "mesg->code = `" . $mesg->code . "', mesg->msg = `" . $mesg->error . "'", KOLAB_DEBUG);
-            &abort;
-        }   
+    Kolab::log('AD', 'mesg is not a search object, testing code...', KOLAB_DEBUG);
+    if ($mesg->code == 88) {
+        Kolab::log('AD', 'changeCallback() -> Exit code received, returning', KOLAB_DEBUG);
+        return;
+    } elsif ($mesg->code) {
+        Kolab::log('AD', "mesg->code = `" . $mesg->code . "', mesg->msg = `" . $mesg->error . "'", KOLAB_DEBUG);
+        &abort;
+    }   
     } else {
-        Kolab::log('AD', 'mesg is a search object, not testing code', KOLAB_DEBUG);
+    Kolab::log('AD', 'mesg is a search object, not testing code', KOLAB_DEBUG);
     }
 
     if (!$entry) {
-        Kolab::log('AD', 'changeCallback() called with a null entry', KOLAB_DEBUG);
-        return;
+    Kolab::log('AD', 'changeCallback() called with a null entry', KOLAB_DEBUG);
+    return;
     } elsif (!$entry->isa("Net::LDAP::Entry")) {
-        Kolab::log('AD', 'changeCallback() called with an invalid entry', KOLAB_DEBUG);
-        return;
+    Kolab::log('AD', 'changeCallback() called with an invalid entry', KOLAB_DEBUG);
+    return;
     }
 
     if (!Kolab::LDAP::isObject($entry, $Kolab::config{'user_object_class'})) {
-        Kolab::log('AD', "Entry is not a `" . $Kolab::config{'user_object_class'} . "', returning", KOLAB_DEBUG);
-        return;
+    Kolab::log('AD', "Entry is not a `" . $Kolab::config{'user_object_class'} . "', returning", KOLAB_DEBUG);
+    return;
     }
 
     my $deleted = $entry->get_value($Kolab::config{'user_field_deleted'}) || 0;
     if ($deleted) {
-        Kolab::LDAP::deleteUser($ldap, $cyrus, $entry);
-        return;
+    Kolab::LDAP::deleteObject($ldap, $cyrus, $entry);
+    return;
     }
 
-    Kolab::LDAP::createUser($ldap, $cyrus, $entry);
+    Kolab::LDAP::createObject($ldap, $cyrus, $entry);
 }
 
 sub run
@@ -124,8 +118,8 @@ sub run
     $SIG{'TERM'} = \&shutdown;
 
     END {
-        alarm 0;
-        Kolab::LDAP::destroy($ldap);
+    alarm 0;
+    Kolab::LDAP::destroy($ldap);
     }
 
     my $mesg;
@@ -137,80 +131,80 @@ sub run
     Kolab::log('AD', 'Cyrus connection established', KOLAB_DEBUG);
 
     while (1) {
-	Kolab::log('AD', 'Creating LDAP connection to AD server', KOLAB_DEBUG);
+    Kolab::log('AD', 'Creating LDAP connection to AD server', KOLAB_DEBUG);
 
-        $ldap = Kolab::LDAP::create(
-            $Kolab::config{'user_ldap_ip'},
-            $Kolab::config{'user_ldap_port'},
-            $Kolab::config{'user_bind_dn'},
-            $Kolab::config{'user_bind_pw'},
-            1
+    $ldap = Kolab::LDAP::create(
+        $Kolab::config{'user_ldap_ip'},
+        $Kolab::config{'user_ldap_port'},
+        $Kolab::config{'user_bind_dn'},
+        $Kolab::config{'user_bind_pw'},
+        1
+    );
+
+    if (!$ldap) {
+        Kolab::log('AD', 'Sleeping 5 seconds...');
+        sleep 5;
+        next;
+    }
+
+    Kolab::log('AD', 'LDAP connection established', KOLAB_DEBUG);
+
+    Kolab::LDAP::ensureAsync($ldap);
+
+    Kolab::log('AD', 'Async checked', KOLAB_DEBUG);
+
+    my $ctrl = Net::LDAP::Control->new(
+        type    => '1.2.840.113556.1.4.528',
+        critical    => 'true'
+    );
+
+    Kolab::log('AD', 'Control created', KOLAB_DEBUG);
+
+    my @userdns = split(/;/, $Kolab::config{'user_dn_list'});
+    my $userdn;
+
+    Kolab::log('AD', 'User DN list = ' . $Kolab::config{'user_dn_list'}, KOLAB_DEBUG);
+
+    if (length(@userdns) == 0) {
+    Kolab::log('AD', 'No user DNs specified, exiting', KOLAB_ERROR);
+    exit(1);
+    }
+
+    foreach $userdn (@userdns) {
+        Kolab::log('AD', "Registering change notification on DN `$userdn'");
+
+        $mesg = $ldap->search (
+        base    => $userdn,
+        scope       => 'one',
+        control     => [ $ctrl ],
+        callback    => \&changeCallback,
+        filter      => '(objectClass=*)',
+        attrs   => [
+            '*',
+            $Kolab::config{'user_field_guid'},
+            $Kolab::config{'user_field_modified'},
+            $Kolab::config{'user_field_quota'},
+            $Kolab::config{'user_field_deleted'},
+        ],
         );
 
-        if (!$ldap) {
-            Kolab::log('AD', 'Sleeping 5 seconds...');
-            sleep 5;
-            next;
-        }
+        Kolab::log('AD', "Change notification registered on `$userdn'");
+    }
 
-	Kolab::log('AD', 'LDAP connection established', KOLAB_DEBUG);
+    eval {
+        local $SIG{ALRM} = sub {
+        alarm 0;
+        Kolab::log('AD', 'Connection refresh period expired; tearing down connection');
 
-        Kolab::LDAP::ensureAsync($ldap);
-
-	Kolab::log('AD', 'Async checked', KOLAB_DEBUG);
-
-        my $ctrl = Net::LDAP::Control->new(
-            type        => '1.2.840.113556.1.4.528',
-            critical    => 'true'
-        );
-
-	Kolab::log('AD', 'Control created', KOLAB_DEBUG);
-
-        my @userdns = split(/;/, $Kolab::config{'user_dn_list'});
-        my $userdn;
-
-	Kolab::log('AD', 'User DN list = ' . $Kolab::config{'user_dn_list'}, KOLAB_DEBUG);
-
-	if (length(@userdns) == 0) {
-		Kolab::log('AD', 'No user DNs specified, exiting', KOLAB_ERROR);
-		exit(1);
-	}
-
-        foreach $userdn (@userdns) {
-            Kolab::log('AD', "Registering change notification on DN `$userdn'");
-
-            $mesg = $ldap->search (
-                base        => $userdn,
-                scope       => 'one',
-                control     => [ $ctrl ],
-                callback    => \&changeCallback,
-                filter      => '(objectClass=*)',
-                attrs   => [
-                    '*',
-                    $Kolab::config{'user_field_guid'},
-                    $Kolab::config{'user_field_modified'},
-                    $Kolab::config{'user_field_quota'},
-                    $Kolab::config{'user_field_deleted'},
-                ],
-            );
-
-            Kolab::log('AD', "Change notification registered on `$userdn'");
-        }
-
-        eval {
-            local $SIG{ALRM} = sub {
-                alarm 0;
-                Kolab::log('AD', 'Connection refresh period expired; tearing down connection');
-
-                Kolab::LDAP::destroy($ldap);
-                next;
-            };
-
-            Kolab::log('AD', 'Waiting for changes (refresh period = ' . $Kolab::config{'conn_refresh_period'} . ' minutes)...');
-            alarm $Kolab::config{'conn_refresh_period'} * 60;
-            $mesg->sync;
-            alarm 0;
+        Kolab::LDAP::destroy($ldap);
+        next;
         };
+
+        Kolab::log('AD', 'Waiting for changes (refresh period = ' . $Kolab::config{'conn_refresh_period'} . ' minutes)...');
+        alarm $Kolab::config{'conn_refresh_period'} * 60;
+        $mesg->sync;
+        alarm 0;
+    };
     }
 
     1;
@@ -222,54 +216,32 @@ __END__
 
 =head1 NAME
 
-Kolab::LDAP::Backend::ad - Perl extension for blah blah blah
-
-=head1 SYNOPSIS
-
-  use Kolab::LDAP::Backend::ad;
-  blah blah blah
+Kolab::LDAP::Backend::ad - Perl extension for an Active Directory backend
 
 =head1 ABSTRACT
 
-  This should be the abstract for Kolab::LDAP::Backend::ad.
-  The abstract is used when making PPD (Perl Package Description) files.
-  If you don't want an ABSTRACT you should also edit Makefile.PL to
-  remove the ABSTRACT_FROM option.
-
-=head1 DESCRIPTION
-
-Stub documentation for Kolab::LDAP::Backend::ad, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
-
-=head2 EXPORT
-
-None by default.
-
-
-
-=head1 SEE ALSO
-
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
-
-If you have a mailing list set up for your module, mention it here.
-
-If you have a web site set up for your module, mention it here.
+  Kolab::LDAP::Backend::ad handles an Active Directory backend to the
+  kolab daemon.
 
 =head1 AUTHOR
 
-root, E<lt>root@(none)E<gt>
+Stuart Bingë, E<lt>s.binge@codefusion.co.zaE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2003 by root
+Copyright (c) 2003  Code Fusion cc
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+This  program is free  software; you can redistribute  it and/or
+modify it  under the terms of the GNU  General Public License as
+published by the  Free Software Foundation; either version 2, or
+(at your option) any later version.
+
+This program is  distributed in the hope that it will be useful,
+but WITHOUT  ANY WARRANTY; without even the  implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
+
+You can view the  GNU General Public License, online, at the GNU
+Project's homepage; see <http://www.gnu.org/licenses/gpl.html>.
 
 =cut
