@@ -43,10 +43,10 @@ our %EXPORT_TAGS = (
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = qw(
-    
+
 );
 
-our $VERSION = '0.9';
+our $VERSION = sprintf('%d.%02d', q$Revision: 1.1.1.1 $ =~ /(\d+)\.(\d+)/);
 
 sub startup { 1; }
 
@@ -82,7 +82,7 @@ sub changeCallback
     } elsif ($mesg->code) {
         Kolab::log('AD', "mesg->code = `" . $mesg->code . "', mesg->msg = `" . $mesg->error . "'", KOLAB_DEBUG);
         &abort;
-    }   
+    }
     } else {
     Kolab::log('AD', 'mesg is a search object, not testing code', KOLAB_DEBUG);
     }

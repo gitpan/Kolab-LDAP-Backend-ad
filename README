@@ -1,4 +1,4 @@
-Kolab/LDAP/Backend/ad version 0.9
+Kolab-LDAP-Backend-ad version 0.01
 ==================================
 
 The README is used to introduce the module and provide instructions on
@@ -21,20 +21,20 @@ To install this module type the following:
    make test
    make install
 
+DEPENDENCIES
+
+This module requires these other modules and libraries:
+
+  blah blah blah
+
 COPYRIGHT AND LICENCE
 
-Copyright (c) 2003  Code Fusion cc
-Writen by Stuart Bingë <s.binge@codefusion.co.za>
+Put the correct copyright and licence information here.
 
-This  program is free  software; you can redistribute  it and/or
-modify it  under the terms of the GNU  General Public License as
-published by the  Free Software Foundation; either version 2, or
-(at your option) any later version.
+Copyright (C) 2004 by A. U. Thor
 
-This program is  distributed in the hope that it will be useful,
-but WITHOUT  ANY WARRANTY; without even the  implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-General Public License for more details.
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.3 or,
+at your option, any later version of Perl 5 you may have available.
 
-You can view the  GNU General Public License, online, at the GNU
-Project's homepage; see <http://www.gnu.org/licenses/gpl.html>.
+
